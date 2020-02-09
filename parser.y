@@ -635,20 +635,9 @@ void yyerror(char *s, ...)
     vfprintf(stderr, s, ap);
     fprintf(stderr, "\n");
 }
-main(int ac, char **av)
+#ifndef YYDEBUG
+int main()
 {
-    // extern FILE *yyin;
-    // if(ac > 1 && !strcmp(av[1], "-d"))
-    // {
-    //     yydebug = 1;
-    //     ac--;
-    //     av++;
-    // }
-    // if(ac > 1 && (yyin = fopen(av[1], "r")) == NULL)
-    // {
-    //     perror(av[1]);
-    //     exit(1);
-    // }
     char csql[1024];
     printf("Please input: ");
     while(1)
@@ -659,7 +648,6 @@ main(int ac, char **av)
         parse_sql(csql);
         printf("Please input: ");
     }
-    // if(!yyparse())    printf("SQL parse worked\n");
-    // else    printf("SQL parse failed\n");
+    return 0;
 } /* main */
-//#include "lex.yy.c"
+#endif

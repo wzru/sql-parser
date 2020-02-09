@@ -1,7 +1,7 @@
 CC = gcc -g
 LEX = flex
 YACC = bison
-CFLAGS = -w -DYYDEBUG=1 -std=c11
+CFLAGS = -w -DYYDEBUG -std=c11
 LIB_CFLAGS = -std=c11 -fPIC
 
 PROGRAMS = csql_parser
