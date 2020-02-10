@@ -321,7 +321,7 @@ expr: expr LIKE expr {
 
    /* statements: select statement */
 stmt: select_stmt { 
-#ifdef YYDEBUG
+#ifdef DEBUG
     emit("SELECT STMT"); 
 #endif
     ast_root = malloc(sizeof(SqlAst));
@@ -331,7 +331,7 @@ stmt: select_stmt {
     ;
 
 select_stmt: SELECT select_expr_list {
-#ifdef YYDEBUG
+#ifdef DEBUG
         emit("SELECTNODATA!");
 #endif
     }
@@ -506,7 +506,7 @@ table_subquery: '(' select_stmt ')' {
 
    /* statements: delete statement */
 stmt: delete_stmt { 
-#ifdef YYDEBUG
+#ifdef DEBUG
     emit("DELETE STMT"); 
 #endif
     ast_root = malloc(sizeof(SqlAst));
@@ -526,7 +526,7 @@ delete_stmt: DELETE FROM NAME opt_where{
 
    /* statements: insert statement */
 stmt: insert_stmt { 
-#ifdef YYDEBUG
+#ifdef DEBUG
     emit("INSERT STMT"); 
 #endif
     ast_root = malloc(sizeof(SqlAst));
@@ -581,7 +581,7 @@ insert_vals: expr {
 
    /* statements: update statement */
 stmt: update_stmt { 
-#ifdef YYDEBUG
+#ifdef DEBUG
     emit("UPDATE STMT"); 
 #endif
     ast_root = malloc(sizeof(SqlAst));
@@ -635,7 +635,7 @@ void yyerror(char *s, ...)
     vfprintf(stderr, s, ap);
     fprintf(stderr, "\n");
 }
-#ifndef YYDEBUG
+#ifdef DEBUG
 int main()
 {
     char csql[1024];

@@ -1,36 +1,44 @@
-CC = gcc -g
-LEX = flex
-YACC = bison
-CFLAGS = -w -DYYDEBUG -std=c11
-LIB_CFLAGS = -std=c11 -fPIC
-
-PROGRAMS = csql_parser
+SHELL := cmd.exe
+CC := gcc -g
+LEX := flex
+YACC := bison
+CFLAGS := -w -std=c11
+DEBUG_CFLAGS := $(CFLAGS) -DDEBUG
+LDCFLAGS := -w -std=c11 -fPIC
+OBJS := lexer.o ast.o parser.tab.o
+LIB := parser.lib
+PROGRAMS := sql_parser
 
 # all: ${PROGRAMS}
 
-slib: parser.tab.o lexer.o ast.o
-		ar -rc parser.lib $^
+static: lexer.o ast.o parser.tab.c parser.tab.h
+		$(CC) $(CFLAGS) -c parser.tab.c -o parser.tab.o
+		ar -rc $(LIB) $(OBJS)
 
-dlib: parser.tab.c lexer.c ast.c
-		${CC} ${LIB_CFLAGS} -shared $^ -o parser.lib
+dynamic: lexer.o ast.o parser.tab.c parser.tab.h
+		$(CC) $(CFLAGS) -c parser.tab.c -o parser.tab.o
+		${CC} ${LDCFLAGS} -shared $(OBJS) -o $(LIB)
 
-parser: parser.tab.o lexer.o ast.o
-		${CC} ${CFLAGS} -o $@ parser.tab.o lexer.o ast.o
+lexer.o: lexer.c
+		$(CC) $(CFLAGS) -c $< -o $@
+
+ast.o: ast.c ast.h
+		${CC} ${CFLAGS} -c $< -o $@
 
 parser.tab.c parser.tab.h: parser.y
 		${YACC} -vd parser.y
 
 lexer.c: lexer.l
-		${LEX} -o $*.c $<
+		${LEX} -o $* $<
 
-lexer.o: lexer.c parser.tab.h
-
-ast.o:
-		${CC} ${CFLAGS} -c ast.c
+parser: lexer.o ast.o parser
+		$(CC) $(CFLAGS) -o $@ lexer.o ast.o parser.o
 
 .SUFFIXES: .l .y .c .h
-
-.PHONY: clean
+.PHONY: clean debug
 
 clean:
 		-rm *.o *.tab.* *.output *.exe *.lib
+
+debug:
+		$(CC) $(DEBUG_CFLAGS) -c parser.tab.c -o parser.o

@@ -3,3 +3,5 @@
 
 *.o
 *.obj
+*.exe
+*.output
