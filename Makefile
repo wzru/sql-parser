@@ -1,4 +1,4 @@
-SHELL := cmd.exe
+SHELL = cmd.exe
 CC := gcc -g
 LEX := flex
 YACC := bison
@@ -11,11 +11,11 @@ PROGRAMS := sql_parser
 
 # all: ${PROGRAMS}
 
-static: lexer.o ast.o parser.tab.c parser.tab.h
+static: ast.o parser.tab.c parser.tab.h lexer.o 
 		$(CC) $(CFLAGS) -c parser.tab.c -o parser.tab.o
 		ar -rc $(LIB) $(OBJS)
 
-dynamic: lexer.o ast.o parser.tab.c parser.tab.h
+dynamic: ast.o parser.tab.c parser.tab.h lexer.o
 		$(CC) $(CFLAGS) -c parser.tab.c -o parser.tab.o
 		${CC} ${LDCFLAGS} -shared $(OBJS) -o $(LIB)
 
@@ -29,7 +29,7 @@ parser.tab.c parser.tab.h: parser.y
 		${YACC} -vd parser.y
 
 lexer.c: lexer.l
-		${LEX} -o $* $<
+		${LEX} -o $*.c $<
 
 parser: lexer.o ast.o parser
 		$(CC) $(CFLAGS) -o $@ lexer.o ast.o parser.o

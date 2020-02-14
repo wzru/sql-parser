@@ -25,7 +25,6 @@
     struct SetNode *assign;
 }
 
-//%parse-param {char *csql}
     /* 名字和字面值 */
 %token <strval> NAME
 %token <strval> STRING
@@ -88,7 +87,7 @@
 %type <insert> insert_stmt
 %type <update> update_stmt
 %type <limit> opt_limit
-%type <cas> case_list case_node
+%type <cas> case_list
 %type <strval> opt_as_alias
 %type <table> table_references table_reference
 %type <intval> opt_asc_desc
@@ -103,13 +102,13 @@ stmt_list: stmt ';'
     ;
 
 expr: NAME {
-        $$ = calloc(1, sizeof(ExprNode));
+        $$ = calloc(1, sizeof(ExprNode));//一般来说就是列名
         $$->type = EXPR_NAME;
         $$->strval = strdup($1);
         free($1);
     }
     | NAME '.' NAME {
-        $$ = calloc(1, sizeof(ExprNode));
+        $$ = calloc(1, sizeof(ExprNode));//一般来说是表.列
         $$->type = EXPR_TABLE_COLUMN;
         $$->strval = strdup($3);
         $$->table = strdup($1);
@@ -201,11 +200,17 @@ expr: expr '+' expr {
     }
     ;
 
-val_list: expr { $$ = $1; }
-    | expr ',' val_list { 
-        $$ = calloc(1, sizeof(ExprNode));
+val_list: expr {
+        $$ = $1;
+        $$->op = $$->type;
         $$->type = EXPR_VAL_LIST;
-        $$->r = $3; 
+        $$->next = NULL;
+    }
+    | expr ',' val_list { 
+        $$ = $1;
+        $$->op = $1->type;
+        $$->type = EXPR_VAL_LIST;
+        $$->next = $3;
     }
     ;
 
@@ -218,21 +223,25 @@ opt_val_list: /* nil */ { $$ = NULL; }
 expr: expr IN '(' val_list ')'       { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_IN_VAL_LIST;
+        $$->l = $1;
         $$->r = $4;
     }   
     | expr NOT IN '(' val_list ')'    { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT_IN_VAL_LIST;
+        $$->l = $1;
         $$->r = $5;
     }   
     | expr IN '(' select_stmt ')'     { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_IN_SELECT;
+        $$->l = $1;
         $$->select = $4;
     }
     | expr NOT IN '(' select_stmt ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT_IN_SELECT;
+        $$->l = $1;
         $$->select = $5;
     }
     ;
@@ -241,7 +250,9 @@ expr: expr IN '(' val_list ')'       {
 expr: NAME '(' opt_val_list ')' {  
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_FUNC;
+        $$->strval = strdup($1);
         $$->r = $3;
+        free($1);
     }
     ;
 
@@ -266,7 +277,7 @@ expr: FCOUNT '(' '*' ')' {
     }
     ;
 
-expr: CASE expr case_list END { 
+expr: CASE expr case_list END {
         $$ = calloc(1, sizeof(ExprNode));
         $$->l = $2;
         $$->type = EXPR_CASE_EXPR;
@@ -278,7 +289,7 @@ expr: CASE expr case_list END {
         $$->type = EXPR_CASE_EXPR_ELSE;
         $$->case_head = $3;
     }
-    |  CASE case_list END { 
+    |  CASE case_list END {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_CASE;
         $$->case_head = $2;
@@ -291,19 +302,14 @@ expr: CASE expr case_list END {
     }
     ;
 
-case_node: WHEN expr THEN expr {
+case_list: WHEN expr THEN expr {
         $$ = calloc(1, sizeof(CaseNode));
         $$->cond = $2, $$->then = $4;
     }
-    ;
-
-case_list: case_node { 
-        $$ = $1;
-        $$->next = NULL;
-    }
-    | case_node case_list { 
+    | WHEN expr THEN expr case_list {
         $$ = calloc(1, sizeof(CaseNode));
-        $$->next = $2;
+        $$->cond = $2, $$->then = $4;
+        $$->next = $5;
     }
     ;
 
@@ -322,11 +328,11 @@ expr: expr LIKE expr {
    /* statements: select statement */
 stmt: select_stmt { 
 #ifdef DEBUG
-    emit("SELECT STMT"); 
+        emit("SELECT STMT");
 #endif
-    ast_root = malloc(sizeof(SqlAst));
-    ast_root->type = SELECT_STMT;
-    ast_root->select = $1;
+        ast_root = malloc(sizeof(SqlAst));
+        ast_root->type = SELECT_STMT;
+        ast_root->select = $1;
     }
     ;
 
@@ -367,13 +373,15 @@ groupby_list: expr {
         $$ = $1;
     }
     | expr ',' groupby_list {
-        $$ = calloc(1, sizeof(ExprNode));
-        $$->r = $3;
+        $$ = $1;
+        $$->type = GROUPBY;
+        $$->next = $3;
     }
     ;
 
 orderby_node: expr opt_asc_desc {
         $$ = $1;
+        $$->op = $$->type;
         $$->type = ORDERBY;
         $$->sc = $2;
     }
@@ -381,11 +389,11 @@ orderby_node: expr opt_asc_desc {
 
 orderby_list: orderby_node{
         $$ = $1;
-        $$->r = NULL;
+        $$->next = NULL;
     }
     | orderby_node ',' groupby_list {
-        $$ = calloc(1, sizeof(ExprNode));
-        $$->r = $3;
+        $$ = $1;
+        $$->next = $3;
     }
     ;
 
@@ -422,7 +430,7 @@ opt_limit: /* nil */ {
     ;
 
 column_list: NAME { 
-        $$ = calloc(1, sizeof(ColumnNode));
+        $$ = calloc(1, sizeof(ColumnNode));//update时候用
         $$->column = strdup($1);
         $$->next = NULL;
         free($1);
@@ -436,12 +444,12 @@ column_list: NAME {
     ;
 
 select_expr_list: select_expr {
-        $$ = $1;//有待验证
+        $$ = $1;
+        $$->next = NULL;
     }
-    | select_expr_list ',' select_expr {
-        $$ = calloc(1, sizeof(ExprNode));
-        $$->type = EXPR_COLUMN;
-        $$->r = $3;
+    | select_expr ',' select_expr_list {
+        $$ = $1;
+        $$->next = $3;
     }
     | '*' {
         $$ = calloc(1, sizeof(ExprNode));
@@ -462,7 +470,15 @@ opt_as_alias: AS NAME {
     | NAME { 
         $$ = strdup($1);
         free($1);
-    }  
+    }
+    | AS STRING {
+        $$ = strdup($2);
+        free($2);
+    }
+    | STRING {
+        $$ = strdup($1);
+        free($1);
+     }
     | {
         $$ = NULL;
     }
@@ -470,9 +486,10 @@ opt_as_alias: AS NAME {
 
 table_references: table_reference { 
         $$ = $1;
+        $$->next = NULL;
     }
-    | table_references ',' table_reference { 
-        $$ = calloc(1, sizeof(TableNode));
+    | table_reference ',' table_references {
+        $$ = $1;
         $$->next = $3;
     }
     ;
@@ -481,10 +498,11 @@ opt_as: AS
     |
     ;
 
-table_reference: NAME opt_as_alias { 
+table_reference: NAME opt_as_alias {
         $$ = calloc(1, sizeof(TableNode));
         $$->type = TABLE_DEFAULT;
         $$->alias = $2;
+        $$->table = strdup($1);
         free($1);
     }
     | table_subquery opt_as NAME { 
@@ -507,11 +525,11 @@ table_subquery: '(' select_stmt ')' {
    /* statements: delete statement */
 stmt: delete_stmt { 
 #ifdef DEBUG
-    emit("DELETE STMT"); 
+        emit("DELETE STMT");
 #endif
-    ast_root = malloc(sizeof(SqlAst));
-    ast_root->type = DELETE_STMT;
-    ast_root->delete = $1;
+        ast_root = malloc(sizeof(SqlAst));
+        ast_root->type = DELETE_STMT;
+        ast_root->delete = $1;
     }
     ;
 
@@ -527,17 +545,15 @@ delete_stmt: DELETE FROM NAME opt_where{
    /* statements: insert statement */
 stmt: insert_stmt { 
 #ifdef DEBUG
-    emit("INSERT STMT"); 
+        emit("INSERT STMT");
 #endif
-    ast_root = malloc(sizeof(SqlAst));
-    ast_root->type = INSERT_STMT;
-    ast_root->insert = $1;
+        ast_root = malloc(sizeof(SqlAst));
+        ast_root->type = INSERT_STMT;
+        ast_root->insert = $1;
     }
     ;
 
-insert_stmt: INSERT opt_into NAME
-    opt_col_names
-    VALUES insert_vals_list { 
+insert_stmt: INSERT opt_into NAME opt_col_names VALUES insert_vals_list {
         $$ = calloc(1, sizeof(InsertNode));
         $$->table = strdup($3);
         $$->column_head = $4;
@@ -582,11 +598,11 @@ insert_vals: expr {
    /* statements: update statement */
 stmt: update_stmt { 
 #ifdef DEBUG
-    emit("UPDATE STMT"); 
+        emit("UPDATE STMT");
 #endif
-    ast_root = malloc(sizeof(SqlAst));
-    ast_root->type = UPDATE_STMT;
-    ast_root->update = $1;
+        ast_root = malloc(sizeof(SqlAst));
+        ast_root->type = UPDATE_STMT;
+        ast_root->update = $1;
     }
     ;
 
@@ -595,6 +611,7 @@ update_stmt: UPDATE NAME
     opt_where { 
         $$ = calloc(1, sizeof(UpdateNode));
         $$->table = strdup($2);
+        $$->set_head = $4;
         $$->where = $5;
         free($2);
     }
@@ -605,12 +622,14 @@ update_asgn_list: NAME COMPARISON expr {
         $$->column = strdup($1);
         free($1);
         $$->expr = $3;
+        $$->op = $2;
         $$->next = NULL;
     }
     | NAME COMPARISON expr ',' update_asgn_list { 
         $$ = calloc(1, sizeof(SetNode));
         $$->column = strdup($1);
         free($1);
+        $$->op = $2;
         $$->expr = $3;
         $$->next = $5;
     }

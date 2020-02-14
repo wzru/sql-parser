@@ -21,7 +21,6 @@ AS { return AS; }
 ASC { return ASC; }
 BY { return BY; }
 CASE { return CASE; }
-COUNT { return COUNT; }
 DELETE { return DELETE; }
 DESC { return DESC; }
 ELSE { return ELSE; }
@@ -39,7 +38,6 @@ OR { return OR; }
 ORDER { return ORDER; }
 SELECT { return SELECT; }
 SET { return SET; }
-SUM { return SUM; }
 THEN { return THEN; }
 UPDATE { return UPDATE; }
 VALUES { return VALUES; }
@@ -56,7 +54,7 @@ WHERE { return WHERE; }
 
     /* 字符串 */
 '(\\.|''|[^'\n])*' |
-\"(\\.|\"\"|[^"\n])*\" { yylval.strval = strdup(yytext); return STRING; }
+\"(\\.|\"\"|[^"\n])*\" { yylval.strval = strdup(yytext+1); yylval.strval[yyleng-2]=0; return STRING; }
 
 '(\\.|[^'\n])*$ { yyerror("Unterminated string %s", yytext); }
 \"(\\.|[^"\n])*$ { yyerror("Unterminated string %s", yytext); }
@@ -94,7 +92,7 @@ SUM { int c=input(); unput(c);
 
     /* 名字 */
 [A-Za-z][A-Za-z0-9_]* { yylval.strval = strdup(yytext); return NAME; }
-`[^`/\\.\n]+` { 
+`[^`/\\.\n]+` {
     yylval.strval=strdup(yytext+1);
     yylval.strval[yyleng-2]=0;
     return NAME;

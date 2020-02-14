@@ -5,37 +5,11 @@ typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char byte;
 
-// struct ValueNode;
-// struct TableNode;
-// struct SelectNode;
-// struct ColumnNode;
-// struct ConditionNode;
-// struct ExprNode;
-// struct LimitNode;
-// struct DeleteNode;
-// struct InsertNode;
-// struct ValueListNode;
-// struct UpdateNode;
-// struct CaseNode;
-// struct SetNode;
+extern char *type_name[1024];
 
-// typedef struct ValueNode ValueNode;
-// typedef struct TableNode TableNode;
-// typedef struct SelectNode SelectNode;
-// typedef struct ColumnNode ColumnNode;
-// typedef struct ConditionNode ConditionNode;
-// typedef struct ExprNode ExprNode;
-// typedef struct LimitNode LimitNode;
-// typedef struct DeleteNode DeleteNode;
-// typedef struct InsertNode InsertNode;
-// typedef struct ValueListNode ValueListNode;
-// typedef struct UpdateNode UpdateNode;
-// typedef struct CaseNode CaseNode;
-// typedef struct SetNode SetNode;
-
-enum
+enum TYPE_ID
 {
-    EXPR_NAME = 1024,
+    EXPR_NAME = 512,
     EXPR_TABLE_COLUMN,
     EXPR_STRING,
     EXPR_INTNUM,
@@ -45,17 +19,17 @@ enum
     EXPR_MUL,
     EXPR_DIV,
     EXPR_MOD,
-    EXPR_NEG,
     EXPR_AND,
     EXPR_OR,
     EXPR_XOR,
-    EXPR_NOT,
     EXPR_EQ,
     EXPR_NE,
     EXPR_LT,
     EXPR_GT,
     EXPR_LE,
     EXPR_GE,
+    EXPR_NEG,
+    EXPR_NOT,
     EXPR_SELECT,
     EXPR_IN_VAL_LIST,
     EXPR_NOT_IN_VAL_LIST,
@@ -78,6 +52,7 @@ enum
     TABLE_DEFAULT,
     TABLE_SUBQUERY,
     ORDERBY,
+    GROUPBY,
     SELECT_ALL,
     SELECT_STMT,
     DELETE_STMT,
@@ -100,17 +75,12 @@ typedef struct ExprNode
     char *table, *alias;
     u16 op;
     struct ExprNode *l, *r;
+    struct ExprNode *next;
 } ExprNode;
-
-typedef struct ValueNode
-{
-    struct ExprNode *value;
-    struct ValueNode *next;
-} ValueNode;
 
 typedef struct ValueListNode
 {
-    struct ValueNode *head;
+    struct ExprNode *head;
     struct ValueListNode *next;
 } ValueListNode;
 
@@ -135,6 +105,7 @@ typedef struct TableNode
 typedef struct SetNode
 {
     char *column;
+    u16 op;
     struct ExprNode *expr;
     struct SetNode *next;
 } SetNode;
@@ -142,7 +113,7 @@ typedef struct SetNode
 typedef struct ColumnNode
 {
     char *column;
-    struct ColumnNode* next;
+    struct ColumnNode *next;
 } ColumnNode;
 
 typedef struct LimitNode
@@ -161,7 +132,8 @@ typedef struct SelectNode
 } SelectNode;
 
 typedef struct DeleteNode
-{//简易版
+{
+    //简易版
     struct ColumnNode *column_head;
     char *table;
     struct ExprNode *where;
@@ -176,10 +148,8 @@ typedef struct InsertNode
 
 typedef struct UpdateNode
 {
-    struct ColumnNode *column_head;
     char *table;
-    struct TableNode *table_head;
-    struct ValueNode *value_head;
+    SetNode *set_head;
     struct ExprNode *where;
 } UpdateNode;
 
@@ -193,13 +163,24 @@ typedef struct SqlAst
         InsertNode *insert;
         UpdateNode *update;
     };
-    
+
 } SqlAst;
 
 extern SqlAst *ast_root;
 
-void yyerror(char *s, ...);
-void emit(char *s, ...);
-SqlAst* parse_sql(char *sql);
+void yyerror (char *s, ...);
+void emit (char *s, ...);
+
+SqlAst *parse_sql (char *sql);
+
+void repeat (char c, int cnt);
+void print_ast (SqlAst *node, int d);
+void print_select (SelectNode *node, int d);
+void print_delete (DeleteNode *node, int d);
+void print_insert (InsertNode *node, int d);
+void print_update (UpdateNode *node, int d);
+void print_column (ExprNode *node, int d);
+void print_val_list (ExprNode *node, int d);
+void print_expr (ExprNode *node, int d);
 
 #endif
