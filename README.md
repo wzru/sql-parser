@@ -263,7 +263,7 @@ typedef struct ExprNode
 `ExprNode`可以表示的类型有：
 
 + 列名/字符串——strval
-+ 表名.列名——表名table，列名strval
++ 表名.列名——表名存在table，列名存在strval
 + 整数——intval
 + 浮点数——floatval
 + 表达式之间的各种算数运算和逻辑运算，其中`LHS`存在`l`，`RHS`存在`r` 
@@ -271,8 +271,6 @@ typedef struct ExprNode
 + 含有`COUNT`, `SUM`等的表达式，参数列表头存在`r`
 + CASE表达式
 + LIKE表达式
-
-## Maintainers
 
 ## Maintainers
 
