@@ -20,7 +20,6 @@
     struct TableNode *table;
     struct LimitNode *limit;
     struct ExprNode *expr;
-    struct CaseNode *cas;
     struct ValueListNode *value_list;
     struct SetNode *assign;
 }
@@ -81,13 +80,12 @@
 %token FCOUNT
 %token FSUM
 
-%type <expr> expr opt_where opt_groupby opt_orderby insert_vals select_expr_list select_expr val_list opt_val_list groupby_list orderby_list orderby_node
+%type <expr> expr opt_where opt_groupby opt_orderby insert_vals select_expr_list select_expr val_list opt_val_list groupby_list orderby_list orderby_node case_list
 %type <select> select_stmt table_subquery
 %type <delete> delete_stmt
 %type <insert> insert_stmt
 %type <update> update_stmt
 %type <limit> opt_limit
-%type <cas> case_list
 %type <strval> opt_as_alias
 %type <table> table_references table_reference
 %type <intval> opt_asc_desc
@@ -105,6 +103,7 @@ expr: NAME {
         $$ = calloc(1, sizeof(ExprNode));//一般来说就是列名
         $$->type = EXPR_NAME;
         $$->strval = strdup($1);
+        sprintf_s($$->text, EXPR_LENGTH, "%s", $1);
         free($1);
     }
     | NAME '.' NAME {
@@ -112,23 +111,27 @@ expr: NAME {
         $$->type = EXPR_TABLE_COLUMN;
         $$->strval = strdup($3);
         $$->table = strdup($1);
+        sprintf_s($$->text, EXPR_LENGTH, "%s.%s", $1, $3);
         free($1); free($3);
     }
     | STRING {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_STRING;
         $$->strval = strdup($1);
+        sprintf_s($$->text, EXPR_LENGTH, "%s", $1);
         free($1);
     }
     | INTNUM {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_INTNUM;
         $$->intval = $1;
+        sprintf_s($$->text, EXPR_LENGTH, "%d", $1);
     }
     | APPROXNUM {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_APPROXNUM;
         $$->floatval = $1;
+        sprintf_s($$->text, EXPR_LENGTH, "%f", $1);
     }
     ;
 
@@ -136,67 +139,80 @@ expr: expr '+' expr {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_ADD;
         $$->l = $1, $$->r=$3;
+        sprintf_s($$->text, EXPR_LENGTH, "%s+%s", $1->text, $3->text);
     }
     | expr '-' expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_SUB;
         $$->l = $1, $$->r=$3; 
+        sprintf_s($$->text, EXPR_LENGTH, "%s-%s", $1->text, $3->text);
     }
     | expr '*' expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_MUL;
         $$->l = $1, $$->r=$3; 
+        sprintf_s($$->text, EXPR_LENGTH, "%s*%s", $1->text, $3->text);
     }
     | expr '/' expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_DIV;
         $$->l = $1, $$->r=$3; 
+        sprintf_s($$->text, EXPR_LENGTH, "%s/%s", $1->text, $3->text);
     }
     | expr '%' expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_MOD;
         $$->l = $1, $$->r=$3;  
+        sprintf_s($$->text, EXPR_LENGTH, "%s%%s", $1->text, $3->text);
     }
     | '-' expr %prec UMINUS { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NEG;
         $$->r=$2; 
+        sprintf_s($$->text, EXPR_LENGTH, "-%s", $2->text);
     }
     | expr ANDOP expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_AND;
         $$->l = $1, $$->r=$3;  
+        sprintf_s($$->text, EXPR_LENGTH, "%s AND %s", $1->text, $3->text);
     }
     | expr OR expr {        
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_OR;
         $$->l = $1, $$->r=$3;   
+        sprintf_s($$->text, EXPR_LENGTH, "%s OR %s", $1->text, $3->text);
     }
     | expr XOR expr {        
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_XOR;
         $$->l = $1, $$->r=$3;  
+        sprintf_s($$->text, EXPR_LENGTH, "%s XOR %s", $1->text, $3->text);
     }
     | NOT expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT;
         $$->r=$2;   
+        sprintf_s($$->text, EXPR_LENGTH, "!%s", $2->text);
     }
     | '!' expr {         
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT;
         $$->r=$2;   
+        sprintf_s($$->text, EXPR_LENGTH, "!%s", $2->text);
     }
     | expr COMPARISON expr { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = $2;
         $$->l = $1, $$->r = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "(%s %s %s)", $1->text, type_name[$2], $3->text);
     }
     | expr COMPARISON '(' select_stmt ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_SELECT;
         $$->op = $2;
         $$->select = $4;
+        sprintf_s($$->text, EXPR_LENGTH, "(%s %s %s)", $1->text, type_name[$2], "SUBQUERY");
     }
     ;
 
@@ -205,12 +221,14 @@ val_list: expr {
         $$->op = $$->type;
         $$->type = EXPR_VAL_LIST;
         $$->next = NULL;
+        sprintf_s($$->text, EXPR_LENGTH, "%s", $1->text);
     }
     | expr ',' val_list { 
         $$ = $1;
         $$->op = $1->type;
         $$->type = EXPR_VAL_LIST;
         $$->next = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "%s,%s", $1->text, $3->text);
     }
     ;
 
@@ -223,26 +241,22 @@ opt_val_list: /* nil */ { $$ = NULL; }
 expr: expr IN '(' val_list ')'       { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_IN_VAL_LIST;
-        $$->l = $1;
-        $$->r = $4;
+        $$->l = $1, $$->r = $4;
     }   
     | expr NOT IN '(' val_list ')'    { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT_IN_VAL_LIST;
-        $$->l = $1;
-        $$->r = $5;
+        $$->l = $1, $$->r = $5;
     }   
     | expr IN '(' select_stmt ')'     { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_IN_SELECT;
-        $$->l = $1;
-        $$->select = $4;
+        $$->l = $1, $$->select = $4;
     }
     | expr NOT IN '(' select_stmt ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT_IN_SELECT;
-        $$->l = $1;
-        $$->select = $5;
+        $$->l = $1, $$->select = $5;
     }
     ;
 
@@ -253,6 +267,7 @@ expr: NAME '(' opt_val_list ')' {
         $$->strval = strdup($1);
         $$->r = $3;
         free($1);
+        sprintf_s($$->text, EXPR_LENGTH, "%s(%s)", $1, $3->text);
     }
     ;
 
@@ -260,20 +275,24 @@ expr: NAME '(' opt_val_list ')' {
 expr: FCOUNT '(' '*' ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_COUNT_ALL;
+        sprintf_s($$->text, EXPR_LENGTH, "COUNT(*)");
     }
     | FCOUNT '(' expr ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_COUNT;
         $$->r = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "COUNT(%s)", $3->text);
     }
     | FSUM '(' '*' ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_SUM_ALL;
+        sprintf_s($$->text, EXPR_LENGTH, "SUM(*)");
     }
     | FSUM '(' expr ')' { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_SUM;
         $$->r = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "SUM(%s)", $3->text);
     }
     ;
 
@@ -282,34 +301,42 @@ expr: CASE expr case_list END {
         $$->l = $2;
         $$->type = EXPR_CASE_EXPR;
         $$->case_head = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "CASE %s %s END", $2->text, $3->text);
     }
     |  CASE expr case_list ELSE expr END { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->l = $2, $$->r = $5;
         $$->type = EXPR_CASE_EXPR_ELSE;
         $$->case_head = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "CASE %s %s ELSE %s END", $2->text, $3->text, $5->text);
     }
     |  CASE case_list END {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_CASE;
         $$->case_head = $2;
+        sprintf_s($$->text, EXPR_LENGTH, "CASE %s END", $2->text);
     }
     |  CASE case_list ELSE expr END { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_CASE_ELSE;
         $$->case_head = $2;
         $$->r = $4;
+        sprintf_s($$->text, EXPR_LENGTH, "CASE %s ELSE %s END", $2->text, $4->text);
     }
     ;
 
 case_list: WHEN expr THEN expr {
-        $$ = calloc(1, sizeof(CaseNode));
-        $$->cond = $2, $$->then = $4;
+        $$ = calloc(1, sizeof(ExprNode));
+        $$->type = EXPR_CASE_NODE;
+        $$->l = $2, $$->r = $4;
+        sprintf_s($$->text, EXPR_LENGTH, "WHEN %s THEN %s", $2->text, $4->text);
     }
     | WHEN expr THEN expr case_list {
-        $$ = calloc(1, sizeof(CaseNode));
-        $$->cond = $2, $$->then = $4;
+        $$ = calloc(1, sizeof(ExprNode));
+        $$->type = EXPR_CASE_NODE;
+        $$->l = $2, $$->r = $4;
         $$->next = $5;
+        sprintf_s($$->text, EXPR_LENGTH, "WHEN %s THEN %s %s", $2->text, $4->text, $5->text);
     }
     ;
 
@@ -317,11 +344,13 @@ expr: expr LIKE expr {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_LIKE;
         $$->l = $1, $$->r = $3;
+        sprintf_s($$->text, EXPR_LENGTH, "(%s LIKE %s)", $1->text, $3->text);
     }
     | expr NOT LIKE expr { 
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_NOT_LIKE;
         $$->l = $1, $$->r = $4;
+        sprintf_s($$->text, EXPR_LENGTH, "(%s NOT LIKE %s)", $1->text, $4->text);
     }
     ;
 
@@ -374,6 +403,7 @@ groupby_list: expr {
     }
     | expr ',' groupby_list {
         $$ = $1;
+        $$->op = $$->type;
         $$->type = GROUPBY;
         $$->next = $3;
     }

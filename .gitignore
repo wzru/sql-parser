@@ -4,4 +4,8 @@
 *.o
 *.obj
 *.exe
+
 *.output
+lexer.c
+*.tab.c
+*.tab.h

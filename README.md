@@ -58,7 +58,7 @@ WHEN
 WHERE
 ```
 
-不支持的功能有`HAVING`, `JOIN`, `DISTINCT`等~~，原因是我暂时用不着~~。
+目前不支持的功能有`HAVING`, `JOIN`, `DISTINCT`等。
 
 ### Statements
 
@@ -269,8 +269,10 @@ typedef struct ExprNode
 + 表达式之间的各种算数运算和逻辑运算，其中`LHS`存在`l`，`RHS`存在`r` 
 + 子表达式是否存在/不存在于一个值列表中，其中子表达式存在`l`，值列表头指针为`r`
 + 含有`COUNT`, `SUM`等的表达式，参数列表头存在`r`
-+ CASE表达式
++ CASE子句
 + LIKE表达式
++ SELECT子查询
++ ORDER BY子句
 
 ## Maintainers
 

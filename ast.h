@@ -1,6 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#define EXPR_LENGTH 256
+
 typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char byte;
@@ -9,11 +11,12 @@ extern char *type_name[1024];
 
 enum TYPE_ID
 {
-    EXPR_NAME = 512,
-    EXPR_TABLE_COLUMN,
-    EXPR_STRING,
-    EXPR_INTNUM,
+    EXPR_INTNUM = 512,
     EXPR_APPROXNUM,
+    EXPR_STRING,
+    EXPR_DATETIME,
+    EXPR_NAME,
+    EXPR_TABLE_COLUMN,
     EXPR_ADD,
     EXPR_SUB,
     EXPR_MUL,
@@ -30,9 +33,11 @@ enum TYPE_ID
     EXPR_GE,
     EXPR_NEG,
     EXPR_NOT,
-    EXPR_SELECT,
     EXPR_IN_VAL_LIST,
     EXPR_NOT_IN_VAL_LIST,
+    EXPR_LIKE,
+    EXPR_NOT_LIKE,
+    EXPR_SELECT,
     EXPR_IN_SELECT,
     EXPR_NOT_IN_SELECT,
     EXPR_VAL_LIST,
@@ -45,10 +50,7 @@ enum TYPE_ID
     EXPR_CASE_ELSE,
     EXPR_CASE_EXPR,
     EXPR_CASE_EXPR_ELSE,
-    EXPR_LIKE,
-    EXPR_NOT_LIKE,
-    EXPR_COLUMN,
-    EXPR_COLUMN_ALL,
+    EXPR_CASE_NODE,
     TABLE_DEFAULT,
     TABLE_SUBQUERY,
     ORDERBY,
@@ -57,7 +59,8 @@ enum TYPE_ID
     SELECT_STMT,
     DELETE_STMT,
     INSERT_STMT,
-    UPDATE_STMT
+    UPDATE_STMT,
+    EXPR_ERROR
 };
 
 typedef struct ExprNode
@@ -69,11 +72,12 @@ typedef struct ExprNode
         float floatval;
         char *strval;
         struct SelectNode *select;
-        struct CaseNode *case_head;
+        struct ExprNode *case_head;
         byte sc;
     };
     char *table, *alias;
     u16 op;
+    char text[EXPR_LENGTH];
     struct ExprNode *l, *r;
     struct ExprNode *next;
 } ExprNode;
@@ -83,12 +87,6 @@ typedef struct ValueListNode
     struct ExprNode *head;
     struct ValueListNode *next;
 } ValueListNode;
-
-typedef struct CaseNode
-{
-    struct ExprNode *cond, *then;
-    struct CaseNode *next;
-} CaseNode;
 
 typedef struct TableNode
 {
@@ -129,12 +127,12 @@ typedef struct SelectNode
     struct ExprNode *group;
     struct ExprNode *order;
     struct LimitNode *limit;
+    void *recs;
 } SelectNode;
 
 typedef struct DeleteNode
 {
     //简易版
-    struct ColumnNode *column_head;
     char *table;
     struct ExprNode *where;
 } DeleteNode;
