@@ -12,6 +12,16 @@ int oldstate;
 %x COMMENT
 %s BTWMODE
 
+AC     [\x00-\x7f]
+ACN    [\x00-\t\v-\x7f]
+U       [\x80-\xbf]
+U2      [\xc2-\xdf]
+U3      [\xe0-\xef]
+U4      [\xf0-\xf4]
+UANY    {AC}|{U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U}
+UANYN   {ACN}|{U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U} 
+UONLY   {U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U}
+
 %%
 
     /* BETWEEN ... AND ...的特殊处理 */
@@ -54,7 +64,14 @@ WHERE { return WHERE; }
 
     /* 字符串 */
 '(\\.|''|[^'\n])*' |
-\"(\\.|\"\"|[^"\n])*\" { yylval.strval = strdup(yytext+1); yylval.strval[yyleng-2]=0; return STRING; }
+\"(\\.|\"\"|[^"\n])*?\" |
+\"[\u4E00-\u9FA5A-Za-z0-9_]*\" { 
+        yylval.strval = strdup(yytext+1); 
+        yylval.strval[yyleng-2]=0; 
+        //fprintf(stderr, "Scan String:'%s'\nByte Array:", yylval.strval);  
+        //for(char *p = yylval.strval; *p; ++p) fprintf(stderr, "%x ", *p);
+        return STRING; 
+    }
 
 '(\\.|[^'\n])*$ { yyerror("Unterminated string %s", yytext); }
 \"(\\.|[^"\n])*$ { yyerror("Unterminated string %s", yytext); }

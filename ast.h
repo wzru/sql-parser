@@ -2,11 +2,9 @@
 #define AST_H
 
 #define EXPR_LENGTH 256
-
 typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char byte;
-
 extern char *type_name[1024];
 
 enum TYPE_ID
@@ -42,10 +40,12 @@ enum TYPE_ID
     EXPR_NOT_IN_SELECT,
     EXPR_VAL_LIST,
     EXPR_FUNC,
+    EXPR_AGR_FUNC_BEGIN,
     EXPR_COUNT_ALL,
     EXPR_COUNT,
     EXPR_SUM_ALL,
     EXPR_SUM,
+    EXPR_AGR_FUNC_END,
     EXPR_CASE,
     EXPR_CASE_ELSE,
     EXPR_CASE_EXPR,
@@ -60,6 +60,8 @@ enum TYPE_ID
     DELETE_STMT,
     INSERT_STMT,
     UPDATE_STMT,
+    EXPR_LAZY,
+    EXPR_NULL,
     EXPR_ERROR
 };
 
@@ -73,10 +75,10 @@ typedef struct ExprNode
         char *strval;
         struct SelectNode *select;
         struct ExprNode *case_head;
-        byte sc;
     };
     char *table, *alias;
     u16 op;
+    byte sc;
     char text[EXPR_LENGTH];
     struct ExprNode *l, *r;
     struct ExprNode *next;
