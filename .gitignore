@@ -4,6 +4,8 @@
 *.o
 *.obj
 *.exe
+*.lib
+*.a
 
 *.output
 lexer.c

@@ -1,8 +1,21 @@
 #ifndef AST_H
 #define AST_H
 
+#if defined(_WIN16) || defined(_WIN32) || defined(_WIN64)
+#else
+#ifndef stricmp
+#define stricmp strcasecmp
+#endif
+#ifndef sprintf_s
+#define sprintf_s snprintf
+#endif
+#ifndef Sleep
+#define Sleep sleep
+#endif
+#endif
+
 #define EXPR_LENGTH 256
-typedef unsigned int u32;
+typedef unsigned int u32, uint;
 typedef unsigned short u16;
 typedef unsigned char byte;
 extern char *type_name[1024];
@@ -68,8 +81,7 @@ enum TYPE_ID
 typedef struct ExprNode
 {
     u16 type;
-    union
-    {
+    union {
         int intval;
         float floatval;
         char *strval;
@@ -93,10 +105,9 @@ typedef struct ValueListNode
 typedef struct TableNode
 {
     u16 type;
-    union
-    {
+    union {
         char *table;
-        struct SelectNode *select;//子查询
+        struct SelectNode *select; //子查询
     };
     char *alias;
     struct TableNode *next;
@@ -156,8 +167,7 @@ typedef struct UpdateNode
 typedef struct SqlAst
 {
     u16 type;
-    union
-    {
+    union {
         SelectNode *select;
         DeleteNode *delete;
         InsertNode *insert;
@@ -168,19 +178,19 @@ typedef struct SqlAst
 
 extern SqlAst *ast_root;
 
-void yyerror (char *s, ...);
-void emit (char *s, ...);
+void yyerror(char *s, ...);
+void emit(char *s, ...);
 
-SqlAst *parse_sql (char *sql);
+SqlAst *parse_sql(char *sql);
 
-void repeat (char c, int cnt);
-void print_ast (SqlAst *node, int d);
-void print_select (SelectNode *node, int d);
-void print_delete (DeleteNode *node, int d);
-void print_insert (InsertNode *node, int d);
-void print_update (UpdateNode *node, int d);
-void print_column (ExprNode *node, int d);
-void print_val_list (ExprNode *node, int d);
-void print_expr (ExprNode *node, int d);
+void repeat(char c, int cnt);
+void print_ast(SqlAst *node, int d);
+void print_select(SelectNode *node, int d);
+void print_delete(DeleteNode *node, int d);
+void print_insert(InsertNode *node, int d);
+void print_update(UpdateNode *node, int d);
+void print_column(ExprNode *node, int d);
+void print_val_list(ExprNode *node, int d);
+void print_expr(ExprNode *node, int d);
 
 #endif

@@ -617,11 +617,11 @@ insert_vals_list: '(' insert_vals ')' {
 
 insert_vals: expr { 
         $$ = $1;
-        $$->r = NULL;
+        $$->next = NULL;
     }
     | expr ',' insert_vals { 
         $$ = $1;
-        $$->r = $3;
+        $$->next = $3;
     }
     ;
 
