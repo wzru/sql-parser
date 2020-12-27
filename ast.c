@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "ast.h"
+#include "parser.tab.h"
 
 SqlAst *ast_root;
 int dbg = 0;
@@ -26,15 +27,15 @@ char *type_name[1024] =
     [EXPR_NOT] = "!"
 };
 
-SqlAst *parse_sql (char *sql)
-{
-    void *bp = yy_scan_string (sql);
-    yy_switch_to_buffer (bp);
-    yyparse();
-    yy_flush_buffer (bp);
-    yy_delete_buffer (bp);
-    return ast_root;
-}
+// SqlAst *parse_sql (char *sql)
+// {
+//     void* bp = yy_scan_string (sql);
+//     yy_switch_to_buffer (bp);
+//     yyparse();
+//     yy_flush_buffer (bp);
+//     yy_delete_buffer (bp);
+//     return ast_root;
+// }
 
 inline void repeat (char c, int cnt)
 {
@@ -237,4 +238,14 @@ void print_expr (ExprNode *node, int d)
             break;
         }
     }
+}
+
+char *my_strdup(const char *s)
+{
+    if(s==NULL) return NULL;
+    size_t len = strlen(s);
+    char *t = malloc(len+1);
+    memcpy(t, s, len);
+    t[len]='\0';
+    return t;
 }

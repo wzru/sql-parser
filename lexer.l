@@ -2,25 +2,18 @@
 %{
 #include "ast.h"
 #include "parser.tab.h"
+
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 
 void yyerror(char *s, ...);
+extern int yylex();
 int oldstate;
 
 %}
 %x COMMENT
 %s BTWMODE
-
-AC     [\x00-\x7f]
-ACN    [\x00-\t\v-\x7f]
-U       [\x80-\xbf]
-U2      [\xc2-\xdf]
-U3      [\xe0-\xef]
-U4      [\xf0-\xf4]
-UANY    {AC}|{U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U}
-UANYN   {ACN}|{U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U} 
-UONLY   {U2}{U}|{U3}{U}{U}|{U4}{U}{U}{U}
 
 %%
 
@@ -64,9 +57,8 @@ WHERE { return WHERE; }
 
     /* 字符串 */
 '(\\.|''|[^'\n])*' |
-\"(\\.|\"\"|[^"\n])*?\" |
-\"[\u4E00-\u9FA5A-Za-z0-9_]*\" { 
-        yylval.strval = strdup(yytext+1); 
+\"(\\.|\"\"|[^"\n])*?\" { 
+        yylval.strval = my_strdup(yytext+1); 
         yylval.strval[yyleng-2]=0; 
         //fprintf(stderr, "Scan String:'%s'\nByte Array:", yylval.strval);  
         //for(char *p = yylval.strval; *p; ++p) fprintf(stderr, "%x ", *p);
@@ -78,11 +70,11 @@ WHERE { return WHERE; }
 
     /* 十六进制字符串 */
 X'[0-9A-F]+' |
-0X[0-9A-F]+ { yylval.strval = strdup(yytext); return STRING; }
+0X[0-9A-F]+ { yylval.strval = my_strdup(yytext); return STRING; }
 
     /* 二进制字符串 */
 0B[01]+ |
-B'[01]+' { yylval.strval=strdup(yytext); return STRING; }
+B'[01]+' { yylval.strval=my_strdup(yytext); return STRING; }
 
     /* 操作符 */
 [-+&~|^/%*(),.;!] {return yytext[0]; }
@@ -101,19 +93,23 @@ B'[01]+' { yylval.strval=strdup(yytext); return STRING; }
     /* check trailing context manually */
 COUNT { int c=input(); unput(c);
         if(c=='(') return FCOUNT;
-        yylval.strval=strdup(yytext); return NAME; }
+        yylval.strval=my_strdup(yytext); return NAME; }
 
 SUM { int c=input(); unput(c);
         if(c=='(') return FSUM;
-        yylval.strval=strdup(yytext); return NAME; }
+        yylval.strval=my_strdup(yytext); return NAME; }
 
     /* 名字 */
-[A-Za-z][A-Za-z0-9_]* { yylval.strval = strdup(yytext); return NAME; }
+[A-Za-z][A-Za-z0-9_]* { 
+    yylval.strval = my_strdup(yytext);
+    return NAME; 
+}
+
 `[^`/\\.\n]+` {
-    yylval.strval=strdup(yytext+1);
+    yylval.strval=my_strdup(yytext+1);
     yylval.strval[yyleng-2]=0;
     return NAME;
-    }
+}
 
 `[^`\n]*$ { yyerror("Unterminated quoted name %s",yytext); }
 

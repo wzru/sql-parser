@@ -1,10 +1,17 @@
 %{
+#include "ast.h"
+#include "lexer.c"
+#include "parser.tab.h"
+
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
 #include <malloc.h>
-#include "ast.h"
+
+
+int yylex();
+
 %}
 
 %union {
@@ -102,22 +109,22 @@ stmt_list: stmt ';'
 expr: NAME {
         $$ = calloc(1, sizeof(ExprNode));//一般来说就是列名
         $$->type = EXPR_NAME;
-        $$->strval = strdup($1);
+        $$->strval = my_strdup($1);
         sprintf_s($$->text, EXPR_LENGTH, "%s", $1);
         free($1);
     }
     | NAME '.' NAME {
         $$ = calloc(1, sizeof(ExprNode));//一般来说是表.列
         $$->type = EXPR_TABLE_COLUMN;
-        $$->strval = strdup($3);
-        $$->table = strdup($1);
+        $$->strval = my_strdup($3);
+        $$->table = my_strdup($1);
         sprintf_s($$->text, EXPR_LENGTH, "%s.%s", $1, $3);
         free($1); free($3);
     }
     | STRING {
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_STRING;
-        $$->strval = strdup($1);
+        $$->strval = my_strdup($1);
         sprintf_s($$->text, EXPR_LENGTH, "%s", $1);
         free($1);
     }
@@ -264,10 +271,10 @@ expr: expr IN '(' val_list ')'       {
 expr: NAME '(' opt_val_list ')' {  
         $$ = calloc(1, sizeof(ExprNode));
         $$->type = EXPR_FUNC;
-        $$->strval = strdup($1);
+        $$->strval = my_strdup($1);
         $$->r = $3;
-        free($1);
         sprintf_s($$->text, EXPR_LENGTH, "%s(%s)", $1, $3->text);
+        free($1);
     }
     ;
 
@@ -461,13 +468,13 @@ opt_limit: /* nil */ {
 
 column_list: NAME { 
         $$ = calloc(1, sizeof(ColumnNode));//update时候用
-        $$->column = strdup($1);
+        $$->column = my_strdup($1);
         $$->next = NULL;
         free($1);
     }
     | NAME ',' column_list { 
         $$ = calloc(1, sizeof(ColumnNode));
-        $$->column = strdup($1);
+        $$->column = my_strdup($1);
         $$->next = $3;
         free($1);
     }
@@ -494,19 +501,19 @@ select_expr: expr opt_as_alias {
     ;
 
 opt_as_alias: AS NAME { 
-        $$ = strdup($2);
+        $$ = my_strdup($2);
         free($2);
     }
     | NAME { 
-        $$ = strdup($1);
+        $$ = my_strdup($1);
         free($1);
     }
     | AS STRING {
-        $$ = strdup($2);
+        $$ = my_strdup($2);
         free($2);
     }
     | STRING {
-        $$ = strdup($1);
+        $$ = my_strdup($1);
         free($1);
      }
     | {
@@ -531,15 +538,15 @@ opt_as: AS
 table_reference: NAME opt_as_alias {
         $$ = calloc(1, sizeof(TableNode));
         $$->type = TABLE_DEFAULT;
-        $$->alias = $2;
-        $$->table = strdup($1);
+        $$->alias = $2; 
+        $$->table = my_strdup($1);
         free($1);
     }
     | table_subquery opt_as NAME { 
         $$ = calloc(1, sizeof(TableNode));
         $$->type = TABLE_SUBQUERY;
         $$->select = $1;
-        $$->alias = strdup($3);
+        $$->alias = my_strdup($3);
         free($3); 
     }
     | '(' table_references ')' { 
@@ -566,7 +573,7 @@ stmt: delete_stmt {
    /* single table delete */
 delete_stmt: DELETE FROM NAME opt_where{ 
         $$ = calloc(1, sizeof(DeleteNode));
-        $$->table = strdup($3);
+        $$->table = my_strdup($3);
         $$->where = $4;
         free($3); 
     }
@@ -585,7 +592,7 @@ stmt: insert_stmt {
 
 insert_stmt: INSERT opt_into NAME opt_col_names VALUES insert_vals_list {
         $$ = calloc(1, sizeof(InsertNode));
-        $$->table = strdup($3);
+        $$->table = my_strdup($3);
         $$->column_head = $4;
         $$->value_list_head = $6;
         free($3);
@@ -640,7 +647,7 @@ update_stmt: UPDATE NAME
     SET update_asgn_list
     opt_where { 
         $$ = calloc(1, sizeof(UpdateNode));
-        $$->table = strdup($2);
+        $$->table = my_strdup($2);
         $$->set_head = $4;
         $$->where = $5;
         free($2);
@@ -649,7 +656,7 @@ update_stmt: UPDATE NAME
 
 update_asgn_list: NAME COMPARISON expr { 
         $$ = calloc(1, sizeof(SetNode));
-        $$->column = strdup($1);
+        $$->column = my_strdup($1);
         free($1);
         $$->expr = $3;
         $$->op = $2;
@@ -657,7 +664,7 @@ update_asgn_list: NAME COMPARISON expr {
     }
     | NAME COMPARISON expr ',' update_asgn_list { 
         $$ = calloc(1, sizeof(SetNode));
-        $$->column = strdup($1);
+        $$->column = my_strdup($1);
         free($1);
         $$->op = $2;
         $$->expr = $3;
@@ -683,6 +690,15 @@ void yyerror(char *s, ...)
     fprintf(stderr, "%d: error: ", yylineno);
     vfprintf(stderr, s, ap);
     fprintf(stderr, "\n");
+}
+SqlAst *parse_sql(char *sql)
+{
+    void* bp = yy_scan_string (sql);
+    yy_switch_to_buffer (bp);
+    yyparse();
+    yy_flush_buffer (bp);
+    yy_delete_buffer (bp);
+    return ast_root;
 }
 #ifdef DEBUG
 int main()

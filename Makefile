@@ -25,13 +25,14 @@ PROGRAMS := sql_parser
 
 # all: ${PROGRAMS}
 
-static: ast.o parser.tab.c parser.tab.h lexer.o 
-		$(CC) $(CFLAGS) -c parser.tab.c -o parser.tab.o
+static: parser.tab.o lexer.o ast.o 
 		ar -rc $(LIB) $(OBJS)
 
-dynamic: ast.o parser.tab.c parser.tab.h lexer.o
-		$(CC) $(CFLAGS) -c parser.tab.c -o parser.tab.o
+dynamic: parser.tab.o lexer.o ast.o 
 		${CC} ${LDCFLAGS} -shared $(OBJS) -o $(LIB)
+
+parser: parser.tab.o lexer.o ast.o 
+		$(CC) $(CFLAGS) -o $@ lexer.o ast.o parser.o
 
 lexer.o: lexer.c
 		$(CC) $(CFLAGS) -c $< -o $@
@@ -39,20 +40,20 @@ lexer.o: lexer.c
 ast.o: ast.c ast.h
 		${CC} ${CFLAGS} -c $< -o $@
 
+parser.tab.o: parser.tab.c parser.tab.h
+		${CC} ${CFLAGS} -c parser.tab.c -o $@
+
 parser.tab.c parser.tab.h: parser.y
 		${YACC} -vd parser.y
 
 lexer.c: lexer.l
 		${LEX} -o $*.c $<
 
-parser: lexer.o ast.o parser
-		$(CC) $(CFLAGS) -o $@ lexer.o ast.o parser.o
-
-.SUFFIXES: .l .y .c .h
+# .SUFFIXES: .l .y
 .PHONY: clean debug
 
 clean:
-		-rm *.o *.tab.* *.output *.exe *.lib
+		rm -f *.o *.tab.* *.output *.exe *.lib lib*.a *.so
 
 debug:
 		$(CC) $(DEBUG_CFLAGS) -c parser.tab.c -o parser.o

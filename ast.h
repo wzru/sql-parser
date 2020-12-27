@@ -178,10 +178,11 @@ typedef struct SqlAst
 
 extern SqlAst *ast_root;
 
-void yyerror(char *s, ...);
+extern void yyerror(char *s, ...);
 void emit(char *s, ...);
 
-SqlAst *parse_sql(char *sql);
+extern SqlAst *parse_sql(char *sql);
+extern char *my_strdup(const char *s);
 
 void repeat(char c, int cnt);
 void print_ast(SqlAst *node, int d);
