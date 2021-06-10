@@ -3,25 +3,50 @@ A concise SQL parser using Flex &amp; Bison
 
 一个使用Flex&Bison构建的简单SQL解析器，可以作为一些组件的编译前端。
 
+## Usage
+
+### Compile
+
+Just `make`. Also need flex & bison.
+
+这个项目使用Makefile。Windows平台可以选择WSL/MinGW/Cygwin。构建这个项目也需要Flex和Bison。
+
+Makefile有多种编译目标，建议可以编译为静态库/动态库的方式调用。
+
+### Quick Start
+Create main.c in sql-parser folder:
+```c
+#include "ast.h"
+int main()
+{
+    char *sql = "SELECT * FROM TABLE;";
+    SqlAst *ast = parse_sql(sql);
+    print_ast(ast, 0);
+    return 0;
+}
+```
+Run:
+```bash
+gcc main.c -o main -L. -lparser
+./main
+```
+It will output like:
+```bash
+{
+        type: SELECT,
+        columns: [
+        {
+                type: *
+        }
+        ],
+}
+```
+
 ## Background
 
 因为最近在写[课设]( https://github.com/WangZhengru/Crims )，但课设本身太无聊了，又由于课设是跟数据库操作相关，所以便想写一个SQL解释器。
 
 又由于课设仅限C语言，很自然地只能使用Flex&Bison，这里参考了动物书系列的[flex & bison]( http://shop.oreilly.com/product/9780596155988.do )。原书上有一个SQL解释器的实现（不过给出的源码并没有构建出AST），这个项目参考了这个实现并进行了一些修改，增加了构建AST的实现，减少了一些功能（所以也许并不能叫SQL解释器，得叫CSQL[Concise SQL]解释器）。
-
-## Usage
-
-### Compilation
-
-Just `make`. Also need flex & bison.
-
-这个项目使用`Makefile`。Windows平台可以选择MinGW或者Cygwin。构建这个项目也需要Flex和Bison。
-
-`Makefile`有多种编译目标，建议可以编译为静态库/动态库的方式调用。
-
-### Integration
-
-`#include "ast.h"` and `link parser.lib`, then you can use it by call `parse_sql(char *sql)`.
 
 ## Features
 
@@ -72,7 +97,7 @@ WHERE
 
 ## Test
 
-以下语句已测试通过**（由于Bison的原因，标识符暂不支持中文，但字符串支持中文）**：
+以下语句已测试通过（由于Bison的原因，标识符暂不支持中文，但字符串支持中文）：
 
 - [x] SELECT A, B, C FROM E, F, G;
 - [x] SELECT A.B, C.D FROM A, C;
