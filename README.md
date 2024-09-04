@@ -301,8 +301,8 @@ typedef struct ExprNode
 
 ## Maintainers
 
-[ShaunWang](https://github.com/WangZhengru)
+[wzru](https://github.com/wzru)
 
 ## License
 
-[GPL-3.0](https://github.com/WangZhengru/Crims/blob/master/LICENSE) © Wang Zhengru
+[GPL-3.0](https://github.com/wzru/Crims/blob/master/LICENSE) © wzru
